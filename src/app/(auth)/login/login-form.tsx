@@ -55,6 +55,7 @@ export function LoginForm({ nextPath }: { nextPath?: string }) {
           autoComplete="current-password"
           required
           disabled={isPending}
+          suppressHydrationWarning
           className="mt-1 block w-full rounded-lg border border-border bg-white px-3 py-2.5 text-sm shadow-sm placeholder:text-muted-foreground focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand disabled:opacity-50"
           placeholder="••••••••"
         />

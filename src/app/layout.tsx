@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -17,7 +17,12 @@ export const metadata: Metadata = {
   description:
     "Mobile-first learning and quiz platform for G7–G12 and GCE. Past papers, MCQ quizzes, and AI-powered marking.",
   applicationName: "Z-Quiz",
+};
+
+export const viewport: Viewport = {
   themeColor: "#16a34a",
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({
