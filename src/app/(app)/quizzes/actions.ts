@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -144,11 +145,23 @@ export async function submitQuiz(formData: FormData): Promise<void> {
       } else {
         try {
           // Use the app's own API route (server-to-server fetch).
+          // IMPORTANT: forward the request's cookies so the API route can
+          // authenticate the user. Without this, the API route's auth check
+          // returns 401 because the fetch doesn't carry the session cookie.
           const appUrl =
             process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+          const cookieStore = await cookies();
+          const cookieHeader = cookieStore
+            .getAll()
+            .map((c) => `${c.name}=${c.value}`)
+            .join("; ");
+
           const res = await fetch(`${appUrl}/api/grade/short-answer`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              Cookie: cookieHeader,
+            },
             body: JSON.stringify({
               question: q.prompt,
               expectedAnswer: expected,
