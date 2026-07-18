@@ -5,29 +5,50 @@
  * standard /chat/completions endpoint. Configure via env vars.
  *
  * For MiniMax specifically, set:
+ *   MINIMAX_API_KEY=<your key>
  *   MINIMAX_BASE_URL=https://api.minimax.chat/v1
  *   MINIMAX_MODEL=minimax-m3
- *   MINIMAX_API_KEY=<your key>
  *
  * For OpenAI:
+ *   MINIMAX_API_KEY=<your key>
  *   MINIMAX_BASE_URL=https://api.openai.com/v1
  *   MINIMAX_MODEL=gpt-4o-mini
  *
  * For Groq:
+ *   MINIMAX_API_KEY=<your key>
  *   MINIMAX_BASE_URL=https://api.groq.com/openai/v1
  *   MINIMAX_MODEL=llama-3.3-70b-versatile
+ *
+ * For Gemini (OpenAI-compatible endpoint):
+ *   MINIMAX_API_KEY=<your key>
+ *   MINIMAX_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
+ *   MINIMAX_MODEL=gemini-2.0-flash
+ *
+ * For VISION (separate config to use a different model for image inputs):
+ *   VISION_API_KEY=<your key>
+ *   VISION_BASE_URL=<see above>
+ *   VISION_MODEL=gemini-2.0-flash | gpt-4o-mini | ...
  */
 
-export type ChatMessage = {
-  role: "system" | "user" | "assistant";
-  content: string;
+export type TextContent = { type: "text"; text: string };
+export type ImageUrlContent = {
+  type: "image_url";
+  image_url: { url: string; detail?: "low" | "high" | "auto" };
 };
+
+export type ContentPart = TextContent | ImageUrlContent;
+
+export type ChatMessage =
+  | { role: "system" | "user" | "assistant"; content: string }
+  | { role: "user"; content: ContentPart[] };
 
 export type ChatOptions = {
   model?: string;
   temperature?: number;
   maxTokens?: number;
   responseFormat?: "text" | "json";
+  /** Use the VISION_* env vars instead of MINIMAX_* */
+  useVisionConfig?: boolean;
 };
 
 export class AIError extends Error {
@@ -41,23 +62,32 @@ export class AIError extends Error {
   }
 }
 
-export function isAIConfigured(): boolean {
-  return Boolean(
-    process.env.MINIMAX_API_KEY && process.env.MINIMAX_BASE_URL && process.env.MINIMAX_MODEL,
-  );
+function loadConfig(useVision: boolean) {
+  const prefix = useVision ? "VISION_" : "MINIMAX_";
+  const apiKey = process.env[`${prefix}API_KEY`];
+  const baseUrl = process.env[`${prefix}BASE_URL`];
+  const model = process.env[`${prefix}MODEL`];
+  return { apiKey, baseUrl, model };
+}
+
+export function isAIConfigured(opts: { vision?: boolean } = {}): boolean {
+  const cfg = loadConfig(opts.vision ?? false);
+  return Boolean(cfg.apiKey && cfg.baseUrl && cfg.model);
 }
 
 export async function chat(
   messages: ChatMessage[],
   options: ChatOptions = {},
 ): Promise<string> {
-  const apiKey = process.env.MINIMAX_API_KEY;
-  const baseUrl = process.env.MINIMAX_BASE_URL;
-  const model = options.model ?? process.env.MINIMAX_MODEL;
+  const cfg = loadConfig(options.useVisionConfig ?? false);
+  const apiKey = cfg.apiKey;
+  const baseUrl = cfg.baseUrl;
+  const model = options.model ?? cfg.model;
 
   if (!apiKey || !baseUrl || !model) {
+    const prefix = options.useVisionConfig ? "VISION_" : "MINIMAX_";
     throw new AIError(
-      "AI not configured. Set MINIMAX_API_KEY, MINIMAX_BASE_URL, and MINIMAX_MODEL in .env.local.",
+      `AI not configured. Set ${prefix}API_KEY, ${prefix}BASE_URL, and ${prefix}MODEL in .env.local.`,
     );
   }
 
