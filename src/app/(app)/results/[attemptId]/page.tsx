@@ -33,9 +33,14 @@ export default async function ResultPage({ params }: Props) {
         is_correct,
         marks_awarded,
         selected_option_id,
+        text_answer,
+        marked_by,
+        ai_reasoning,
+        ai_confidence,
         questions (
           id,
           prompt,
+          question_type,
           marks,
           explanation,
           question_options ( id, label, text, is_correct )
@@ -123,40 +128,112 @@ export default async function ResultPage({ params }: Props) {
             const userOpt = options.find(
               (o: { id: string }) => o.id === a.selected_option_id,
             );
+            const isMCQ = q?.question_type === "mcq";
+            const isShortAnswer =
+              q?.question_type === "short_answer" || q?.question_type === "essay";
+
+            // Colour hint for the card
+            const isFull = (a.marks_awarded ?? 0) >= (q?.marks ?? 0);
+            const isPartial =
+              !isFull && (a.marks_awarded ?? 0) > 0;
+            const cardBorder = isMCQ
+              ? a.is_correct
+                ? "border-green-200 bg-green-50"
+                : "border-red-200 bg-red-50"
+              : isFull
+                ? "border-green-200 bg-green-50"
+                : isPartial
+                  ? "border-amber-200 bg-amber-50"
+                  : "border-red-200 bg-red-50";
+
+            const badgeText = isMCQ
+              ? a.is_correct
+                ? "Correct"
+                : "Incorrect"
+              : isFull
+                ? "Full marks"
+                : isPartial
+                  ? "Partial"
+                  : (a.marks_awarded ?? 0) === 0
+                    ? "No marks"
+                    : "Marked";
+
             return (
               <li
                 key={q?.id ?? idx}
-                className={`rounded-xl border p-4 sm:p-5 ${
-                  a.is_correct
-                    ? "border-green-200 bg-green-50"
-                    : "border-red-200 bg-red-50"
-                }`}
+                className={`rounded-xl border p-4 sm:p-5 ${cardBorder}`}
               >
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Question {idx + 1} · {a.is_correct ? "Correct" : "Incorrect"} ·{" "}
-                  {a.marks_awarded} / {q?.marks}
+                  Question {idx + 1} · {badgeText} · {a.marks_awarded ?? 0} /{" "}
+                  {q?.marks}
+                  {a.marked_by === "ai" && (
+                    <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800">
+                      AI-MARKED
+                    </span>
+                  )}
                 </p>
                 <p className="mt-1 font-medium">{q?.prompt}</p>
 
-                <div className="mt-3 space-y-1 text-sm">
-                  <p>
-                    <span className="text-muted-foreground">Your answer: </span>
-                    <span className="font-medium">
-                      {userOpt
-                        ? `${userOpt.label}. ${userOpt.text}`
-                        : "Skipped"}
-                    </span>
-                  </p>
-                  {!a.is_correct && correctOpt && (
-                    <p>
-                      <span className="text-muted-foreground">
-                        Correct answer:{" "}
-                      </span>
-                      <span className="font-medium">
-                        {correctOpt.label}. {correctOpt.text}
-                      </span>
-                    </p>
+                <div className="mt-3 space-y-2 text-sm">
+                  {isMCQ ? (
+                    <>
+                      <p>
+                        <span className="text-muted-foreground">Your answer: </span>
+                        <span className="font-medium">
+                          {userOpt
+                            ? `${userOpt.label}. ${userOpt.text}`
+                            : "Skipped"}
+                        </span>
+                      </p>
+                      {!a.is_correct && correctOpt && (
+                        <p>
+                          <span className="text-muted-foreground">
+                            Correct answer:{" "}
+                          </span>
+                          <span className="font-medium">
+                            {correctOpt.label}. {correctOpt.text}
+                          </span>
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <p className="text-muted-foreground">Your answer:</p>
+                        <p className="mt-1 whitespace-pre-wrap rounded-md bg-white/60 p-3 text-foreground">
+                          {a.text_answer || (
+                            <span className="italic text-muted-foreground">
+                              (no answer)
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                      {a.ai_reasoning && (
+                        <div className="rounded-md bg-white/60 p-3">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                            AI reasoning
+                            {a.ai_confidence && (
+                              <span
+                                className={`ml-2 rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                                  a.ai_confidence === "high"
+                                    ? "bg-green-100 text-green-700"
+                                    : a.ai_confidence === "medium"
+                                      ? "bg-amber-100 text-amber-800"
+                                      : "bg-red-100 text-red-700"
+                                }`}
+                              >
+                                {a.ai_confidence} confidence
+                              </span>
+                            )}
+                          </p>
+                          <p className="mt-1 text-foreground">
+                            {a.ai_reasoning}
+                          </p>
+                        </div>
+                      )}
+                    </>
                   )}
+
                   {q?.explanation && (
                     <p className="mt-2 text-muted-foreground">
                       💡 {q.explanation}

@@ -451,6 +451,8 @@ export interface Database {
           is_correct: boolean | null;
           marks_awarded: number | null;
           marked_by: MarkedBy | null;
+          ai_reasoning: string | null;
+          ai_confidence: "high" | "medium" | "low" | null;
           created_at: string;
         };
         Insert: {
@@ -463,6 +465,8 @@ export interface Database {
           is_correct?: boolean | null;
           marks_awarded?: number | null;
           marked_by?: MarkedBy | null;
+          ai_reasoning?: string | null;
+          ai_confidence?: "high" | "medium" | "low" | null;
           created_at?: string;
         };
         Update: Partial<{
@@ -475,6 +479,8 @@ export interface Database {
           is_correct: boolean | null;
           marks_awarded: number | null;
           marked_by: MarkedBy | null;
+          ai_reasoning: string | null;
+          ai_confidence: "high" | "medium" | "low" | null;
           created_at: string;
         }>;
         Relationships: [

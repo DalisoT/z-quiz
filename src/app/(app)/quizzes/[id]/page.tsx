@@ -28,6 +28,7 @@ export default async function QuizPage({ params }: Props) {
         questions (
           id,
           prompt,
+          question_type,
           marks,
           explanation,
           question_options (
@@ -55,6 +56,7 @@ export default async function QuizPage({ params }: Props) {
         questions: {
           id: string;
           prompt: string;
+          question_type: string;
           marks: number;
           explanation: string | null;
           question_options: {
@@ -116,6 +118,13 @@ export default async function QuizPage({ params }: Props) {
               {quiz.time_limit_minutes} min
             </span>
           )}
+          {ordered.some(
+            (q: { question_type: string }) => q.question_type !== "mcq",
+          ) && (
+            <span className="rounded-md bg-amber-100 px-2 py-1 font-medium text-amber-800">
+              AI-marked questions included
+            </span>
+          )}
         </div>
       </div>
 
@@ -128,6 +137,7 @@ export default async function QuizPage({ params }: Props) {
             q: {
               id: string;
               prompt: string;
+              question_type: string;
               marks: number;
               explanation: string | null;
               question_options: {
@@ -139,9 +149,7 @@ export default async function QuizPage({ params }: Props) {
             },
             idx: number,
           ) => {
-            const options = [...q.question_options].sort(
-              (a, b) => a.display_order - b.display_order,
-            );
+            const isMCQ = q.question_type === "mcq";
             return (
               <fieldset
                 key={q.id}
@@ -149,31 +157,53 @@ export default async function QuizPage({ params }: Props) {
               >
                 <legend className="px-1 text-sm font-semibold text-muted-foreground">
                   Question {idx + 1} · {q.marks} mark{q.marks === 1 ? "" : "s"}
+                  {!isMCQ && (
+                    <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800">
+                      AI-MARKED
+                    </span>
+                  )}
                 </legend>
                 <p className="mt-1 text-base font-medium leading-relaxed">
                   {q.prompt}
                 </p>
 
-                <div className="mt-4 space-y-2">
-                  {options.map((o) => (
-                    <label
-                      key={o.id}
-                      className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 hover:border-brand hover:bg-muted/40 transition"
-                    >
-                      <input
-                        type="radio"
-                        name={`question_${q.id}`}
-                        value={o.id}
-                        className="mt-0.5 h-4 w-4 accent-[var(--brand)]"
-                        required
-                      />
-                      <span className="flex-1 text-sm">
-                        <span className="font-semibold mr-2">{o.label}.</span>
-                        {o.text}
-                      </span>
-                    </label>
-                  ))}
-                </div>
+                {isMCQ ? (
+                  <div className="mt-4 space-y-2">
+                    {[...q.question_options]
+                      .sort((a, b) => a.display_order - b.display_order)
+                      .map((o) => (
+                        <label
+                          key={o.id}
+                          className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 hover:border-brand hover:bg-muted/40 transition"
+                        >
+                          <input
+                            type="radio"
+                            name={`option_${q.id}`}
+                            value={o.id}
+                            className="mt-0.5 h-4 w-4 accent-[var(--brand)]"
+                            required
+                          />
+                          <span className="flex-1 text-sm">
+                            <span className="font-semibold mr-2">{o.label}.</span>
+                            {o.text}
+                          </span>
+                        </label>
+                      ))}
+                  </div>
+                ) : (
+                  <div className="mt-4">
+                    <textarea
+                      name={`text_${q.id}`}
+                      rows={4}
+                      required
+                      className="block w-full rounded-lg border border-border bg-white px-3 py-2.5 text-sm shadow-sm placeholder:text-muted-foreground focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+                      placeholder="Type your answer here…"
+                    />
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Your answer will be marked by AI and shown on the results page.
+                    </p>
+                  </div>
+                )}
               </fieldset>
             );
           },
