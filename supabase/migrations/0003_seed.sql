@@ -24,12 +24,12 @@ on conflict (code) do nothing;
 -- ============================================================================
 do $$
 declare
-  g12_id uuid;
-  maths_id uuid;
-  eng_id uuid;
-  topic_id uuid;
-  q_id uuid;
-  quiz_id uuid;
+  g12_id      uuid;
+  maths_id    uuid;
+  eng_id      uuid;
+  v_topic_id  uuid;     -- "v_" prefix avoids collision with the topic_id column
+  q_id        uuid;
+  quiz_id     uuid;
 begin
   -- --------------------------------------------------------------------------
   -- CLEANUP: remove any partial seed data so this script is fully idempotent.
@@ -97,20 +97,20 @@ begin
   -- ==========================================================================
   -- SAMPLE MCQ QUESTIONS — Mathematics / Algebra
   -- ==========================================================================
-  select id into topic_id from public.topics where subject_id = maths_id and slug = 'algebra';
+  select id into v_topic_id from public.topics where subject_id = maths_id and slug = 'algebra';
 
   insert into public.questions
     (topic_id, question_type, prompt, explanation, marks, difficulty, source_examiner, source_paper, source_year)
   values
-    (topic_id, 'mcq', 'Solve for x:  2x + 5 = 13',                      'Subtract 5 from both sides, then divide by 2.', 1, 'easy',   'ECZ', 'Paper 1', 2022),
-    (topic_id, 'mcq', 'If f(x) = 2x² − 3x + 1, find f(2).',             'f(2) = 2(4) − 3(2) + 1 = 8 − 6 + 1 = 3',         1, 'easy',   'ECZ', 'Paper 1', 2021),
-    (topic_id, 'mcq', 'Simplify (x² − 9) / (x − 3).',                    'Factor the numerator: (x−3)(x+3). Cancel (x−3).', 1, 'medium', 'ECZ', 'Paper 1', 2020),
-    (topic_id, 'mcq', 'Find the roots of x² − 5x + 6 = 0.',             'Factor: (x−2)(x−3) = 0, so x = 2 or x = 3.',   1, 'medium', 'ECZ', 'Paper 1', 2019)
+    (v_topic_id, 'mcq', 'Solve for x:  2x + 5 = 13',                  'Subtract 5 from both sides, then divide by 2.', 1, 'easy',   'ECZ', 'Paper 1', 2022),
+    (v_topic_id, 'mcq', 'If f(x) = 2x² − 3x + 1, find f(2).',         'f(2) = 2(4) − 3(2) + 1 = 8 − 6 + 1 = 3',         1, 'easy',   'ECZ', 'Paper 1', 2021),
+    (v_topic_id, 'mcq', 'Simplify (x² − 9) / (x − 3).',                'Factor the numerator: (x−3)(x+3). Cancel (x−3).', 1, 'medium', 'ECZ', 'Paper 1', 2020),
+    (v_topic_id, 'mcq', 'Find the roots of x² − 5x + 6 = 0.',         'Factor: (x−2)(x−3) = 0, so x = 2 or x = 3.',   1, 'medium', 'ECZ', 'Paper 1', 2019)
   on conflict do nothing;
 
   for q_id in
     select id from public.questions
-    where public.questions.topic_id = (select id from public.topics where subject_id = maths_id and slug = 'algebra')
+    where public.questions.topic_id = v_topic_id
       and prompt in (
         'Solve for x:  2x + 5 = 13',
         'If f(x) = 2x² − 3x + 1, find f(2).',
@@ -150,19 +150,19 @@ begin
   -- ==========================================================================
   -- SAMPLE MCQ QUESTIONS — Mathematics / Calculus
   -- ==========================================================================
-  select id into topic_id from public.topics where subject_id = maths_id and slug = 'calculus';
+  select id into v_topic_id from public.topics where subject_id = maths_id and slug = 'calculus';
 
   insert into public.questions
     (topic_id, question_type, prompt, explanation, marks, difficulty, source_examiner, source_paper, source_year)
   values
-    (topic_id, 'mcq', 'Find dy/dx if y = 3x² + 2x.', 'Power rule: d/dx(axⁿ) = n·a·xⁿ⁻¹', 1, 'easy',   'ECZ', 'Paper 2', 2022),
-    (topic_id, 'mcq', 'Evaluate ∫ 2x dx.',            'Antiderivative of 2x is x² + C.',   1, 'easy',   'ECZ', 'Paper 2', 2021),
-    (topic_id, 'mcq', 'Find dy/dx if y = sin(x).',   'd/dx(sin x) = cos x.',             1, 'medium', 'ECZ', 'Paper 2', 2020)
+    (v_topic_id, 'mcq', 'Find dy/dx if y = 3x² + 2x.', 'Power rule: d/dx(axⁿ) = n·a·xⁿ⁻¹', 1, 'easy',   'ECZ', 'Paper 2', 2022),
+    (v_topic_id, 'mcq', 'Evaluate ∫ 2x dx.',            'Antiderivative of 2x is x² + C.',   1, 'easy',   'ECZ', 'Paper 2', 2021),
+    (v_topic_id, 'mcq', 'Find dy/dx if y = sin(x).',   'd/dx(sin x) = cos x.',             1, 'medium', 'ECZ', 'Paper 2', 2020)
   on conflict do nothing;
 
   for q_id in
     select id from public.questions
-    where public.questions.topic_id = (select id from public.topics where subject_id = maths_id and slug = 'calculus')
+    where public.questions.topic_id = v_topic_id
       and prompt in (
         'Find dy/dx if y = 3x² + 2x.',
         'Evaluate ∫ 2x dx.',
@@ -195,19 +195,19 @@ begin
   -- ==========================================================================
   -- SAMPLE MCQ QUESTIONS — English / Grammar
   -- ==========================================================================
-  select id into topic_id from public.topics where subject_id = eng_id and slug = 'grammar';
+  select id into v_topic_id from public.topics where subject_id = eng_id and slug = 'grammar';
 
   insert into public.questions
     (topic_id, question_type, prompt, explanation, marks, difficulty, source_examiner, source_paper, source_year)
   values
-    (topic_id, 'mcq', 'Choose the correct sentence.',                                            '"She doesn''t know" is the correct third-person singular form.', 1, 'easy',   'ECZ', 'Paper 1', 2022),
-    (topic_id, 'mcq', 'Identify the verb in: "The cat quickly ran across the yard."',           '"Ran" is the action word (past tense of "run").',               1, 'easy',   'ECZ', 'Paper 1', 2021),
-    (topic_id, 'mcq', 'Which sentence is in the passive voice?',                                 'Passive voice: subject receives the action ("was written").',  1, 'medium', 'ECZ', 'Paper 1', 2020)
+    (v_topic_id, 'mcq', 'Choose the correct sentence.',                                       '"She doesn''t know" is the correct third-person singular form.', 1, 'easy',   'ECZ', 'Paper 1', 2022),
+    (v_topic_id, 'mcq', 'Identify the verb in: "The cat quickly ran across the yard."',      '"Ran" is the action word (past tense of "run").',               1, 'easy',   'ECZ', 'Paper 1', 2021),
+    (v_topic_id, 'mcq', 'Which sentence is in the passive voice?',                            'Passive voice: subject receives the action ("was written").',  1, 'medium', 'ECZ', 'Paper 1', 2020)
   on conflict do nothing;
 
   for q_id in
     select id from public.questions
-    where public.questions.topic_id = (select id from public.topics where subject_id = eng_id and slug = 'grammar')
+    where public.questions.topic_id = v_topic_id
       and prompt in (
         'Choose the correct sentence.',
         'Identify the verb in: "The cat quickly ran across the yard."',
@@ -240,18 +240,18 @@ begin
   -- ==========================================================================
   -- SAMPLE MCQ QUESTIONS — English / Comprehension
   -- ==========================================================================
-  select id into topic_id from public.topics where subject_id = eng_id and slug = 'comprehension';
+  select id into v_topic_id from public.topics where subject_id = eng_id and slug = 'comprehension';
 
   insert into public.questions
     (topic_id, question_type, prompt, explanation, marks, difficulty, source_examiner, source_paper, source_year)
   values
-    (topic_id, 'mcq', 'The word "ubiquitous" most nearly means:',                  'Ubiquitous = present everywhere.',         1, 'medium', 'ECZ', 'Paper 2', 2022),
-    (topic_id, 'mcq', 'What is the main purpose of reading a comprehension passage?', 'To test understanding of a given text.', 1, 'easy',   'ECZ', 'Paper 2', 2021)
+    (v_topic_id, 'mcq', 'The word "ubiquitous" most nearly means:',                  'Ubiquitous = present everywhere.',         1, 'medium', 'ECZ', 'Paper 2', 2022),
+    (v_topic_id, 'mcq', 'What is the main purpose of reading a comprehension passage?', 'To test understanding of a given text.', 1, 'easy',   'ECZ', 'Paper 2', 2021)
   on conflict do nothing;
 
   for q_id in
     select id from public.questions
-    where public.questions.topic_id = (select id from public.topics where subject_id = eng_id and slug = 'comprehension')
+    where public.questions.topic_id = v_topic_id
       and prompt in (
         'The word "ubiquitous" most nearly means:',
         'What is the main purpose of reading a comprehension passage?'
@@ -279,40 +279,40 @@ begin
   -- ==========================================================================
 
   -- Quiz 1: G12 Mathematics — Algebra Practice
-  select id into topic_id from public.topics where subject_id = maths_id and slug = 'algebra';
+  select id into v_topic_id from public.topics where subject_id = maths_id and slug = 'algebra';
 
   if not exists (
     select 1 from public.quizzes
-    where public.quizzes.topic_id = (select id from public.topics where subject_id = maths_id and slug = 'algebra')
+    where public.quizzes.topic_id = v_topic_id
       and title = 'Algebra — Quick Practice'
   ) then
     insert into public.quizzes (topic_id, title, description, time_limit_minutes, is_published)
-    values (topic_id, 'Algebra — Quick Practice', '4 questions on basic G12 algebra.', 10, true)
+    values (v_topic_id, 'Algebra — Quick Practice', '4 questions on basic G12 algebra.', 10, true)
     returning id into quiz_id;
 
     insert into public.quiz_questions (quiz_id, question_id, display_order)
     select quiz_id, q.id, row_number() over (order by q.created_at)
     from public.questions q
-    where q.topic_id = topic_id
+    where q.topic_id = v_topic_id
     on conflict do nothing;
   end if;
 
   -- Quiz 2: G12 English — Grammar Practice
-  select id into topic_id from public.topics where subject_id = eng_id and slug = 'grammar';
+  select id into v_topic_id from public.topics where subject_id = eng_id and slug = 'grammar';
 
   if not exists (
     select 1 from public.quizzes
-    where public.quizzes.topic_id = (select id from public.topics where subject_id = eng_id and slug = 'grammar')
+    where public.quizzes.topic_id = v_topic_id
       and title = 'Grammar — Quick Practice'
   ) then
     insert into public.quizzes (topic_id, title, description, time_limit_minutes, is_published)
-    values (topic_id, 'Grammar — Quick Practice', '3 questions on basic G12 English grammar.', 10, true)
+    values (v_topic_id, 'Grammar — Quick Practice', '3 questions on basic G12 English grammar.', 10, true)
     returning id into quiz_id;
 
     insert into public.quiz_questions (quiz_id, question_id, display_order)
     select quiz_id, q.id, row_number() over (order by q.created_at)
     from public.questions q
-    where q.topic_id = topic_id
+    where q.topic_id = v_topic_id
     on conflict do nothing;
   end if;
 
