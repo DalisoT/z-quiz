@@ -110,7 +110,7 @@ begin
 
   for q_id in
     select id from public.questions
-    where topic_id = (select id from public.topics where subject_id = maths_id and slug = 'algebra')
+    where public.questions.topic_id = (select id from public.topics where subject_id = maths_id and slug = 'algebra')
       and prompt in (
         'Solve for x:  2x + 5 = 13',
         'If f(x) = 2x² − 3x + 1, find f(2).',
@@ -162,7 +162,7 @@ begin
 
   for q_id in
     select id from public.questions
-    where topic_id = (select id from public.topics where subject_id = maths_id and slug = 'calculus')
+    where public.questions.topic_id = (select id from public.topics where subject_id = maths_id and slug = 'calculus')
       and prompt in (
         'Find dy/dx if y = 3x² + 2x.',
         'Evaluate ∫ 2x dx.',
@@ -207,7 +207,7 @@ begin
 
   for q_id in
     select id from public.questions
-    where topic_id = (select id from public.topics where subject_id = eng_id and slug = 'grammar')
+    where public.questions.topic_id = (select id from public.topics where subject_id = eng_id and slug = 'grammar')
       and prompt in (
         'Choose the correct sentence.',
         'Identify the verb in: "The cat quickly ran across the yard."',
@@ -251,7 +251,7 @@ begin
 
   for q_id in
     select id from public.questions
-    where topic_id = (select id from public.topics where subject_id = eng_id and slug = 'comprehension')
+    where public.questions.topic_id = (select id from public.topics where subject_id = eng_id and slug = 'comprehension')
       and prompt in (
         'The word "ubiquitous" most nearly means:',
         'What is the main purpose of reading a comprehension passage?'
@@ -283,7 +283,7 @@ begin
 
   if not exists (
     select 1 from public.quizzes
-    where topic_id = (select id from public.topics where subject_id = maths_id and slug = 'algebra')
+    where public.quizzes.topic_id = (select id from public.topics where subject_id = maths_id and slug = 'algebra')
       and title = 'Algebra — Quick Practice'
   ) then
     insert into public.quizzes (topic_id, title, description, time_limit_minutes, is_published)
@@ -302,7 +302,7 @@ begin
 
   if not exists (
     select 1 from public.quizzes
-    where topic_id = (select id from public.topics where subject_id = eng_id and slug = 'grammar')
+    where public.quizzes.topic_id = (select id from public.topics where subject_id = eng_id and slug = 'grammar')
       and title = 'Grammar — Quick Practice'
   ) then
     insert into public.quizzes (topic_id, title, description, time_limit_minutes, is_published)
