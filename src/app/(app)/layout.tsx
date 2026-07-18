@@ -42,9 +42,12 @@ export default async function AppLayout({
             Z-Quiz
           </Link>
           <nav className="flex items-center gap-1 sm:gap-3 text-sm">
-            <span className="hidden sm:inline-block rounded-md px-2 sm:px-3 py-1.5 text-muted-foreground">
+            <Link
+              href="/profile"
+              className="hidden sm:inline-block rounded-md px-2 sm:px-3 py-1.5 text-foreground hover:bg-muted transition"
+            >
               {displayName}
-            </span>
+            </Link>
             <form action={signOut}>
               <button
                 type="submit"
