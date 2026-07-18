@@ -34,6 +34,7 @@ export default async function ResultPage({ params }: Props) {
         marks_awarded,
         selected_option_id,
         text_answer,
+        image_storage_path,
         marked_by,
         ai_reasoning,
         ai_confidence,
@@ -52,6 +53,23 @@ export default async function ResultPage({ params }: Props) {
     .single();
 
   if (!attempt) notFound();
+
+  // For equation answers, generate signed URLs so we can show the uploaded image
+  const imagePaths = (attempt.attempt_answers ?? [])
+    .map((a) => a.image_storage_path)
+    .filter((p): p is string => Boolean(p));
+
+  const signedUrlByPath = new Map<string, string>();
+  if (imagePaths.length > 0) {
+    const { data: signed } = await supabase.storage
+      .from("attempt-images")
+      .createSignedUrls(imagePaths, 600); // 10 min
+    for (const item of signed ?? []) {
+      if (item.path && item.signedUrl) {
+        signedUrlByPath.set(item.path, item.signedUrl);
+      }
+    }
+  }
 
   const pct =
     attempt.total_marks && attempt.total_marks > 0
@@ -131,6 +149,10 @@ export default async function ResultPage({ params }: Props) {
             const isMCQ = q?.question_type === "mcq";
             const isShortAnswer =
               q?.question_type === "short_answer" || q?.question_type === "essay";
+            const isEquation = q?.question_type === "equation";
+            const imageUrl = a.image_storage_path
+              ? signedUrlByPath.get(a.image_storage_path)
+              : undefined;
 
             // Colour hint for the card
             const isFull = (a.marks_awarded ?? 0) >= (q?.marks ?? 0);
@@ -166,7 +188,12 @@ export default async function ResultPage({ params }: Props) {
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Question {idx + 1} · {badgeText} · {a.marks_awarded ?? 0} /{" "}
                   {q?.marks}
-                  {a.marked_by === "ai" && (
+                  {isEquation && (
+                    <span className="ml-2 rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-800">
+                      VISION-MARKED
+                    </span>
+                  )}
+                  {a.marked_by === "ai" && !isEquation && (
                     <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800">
                       AI-MARKED
                     </span>
@@ -194,6 +221,55 @@ export default async function ResultPage({ params }: Props) {
                             {correctOpt.label}. {correctOpt.text}
                           </span>
                         </p>
+                      )}
+                    </>
+                  ) : isEquation ? (
+                    <>
+                      {imageUrl ? (
+                        <div>
+                          <p className="text-muted-foreground">Your photo:</p>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={imageUrl}
+                            alt="Your handwritten work"
+                            className="mt-1 max-h-80 w-full rounded-md border border-border bg-white object-contain"
+                          />
+                        </div>
+                      ) : (
+                        <p className="text-muted-foreground italic">
+                          (no photo submitted)
+                        </p>
+                      )}
+                      {a.text_answer && (
+                        <div>
+                          <p className="text-muted-foreground">Your typed answer:</p>
+                          <p className="mt-1 whitespace-pre-wrap rounded-md bg-white/60 p-3 text-foreground">
+                            {a.text_answer}
+                          </p>
+                        </div>
+                      )}
+                      {a.ai_reasoning && (
+                        <div className="rounded-md bg-white/60 p-3">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                            Vision AI reasoning
+                            {a.ai_confidence && (
+                              <span
+                                className={`ml-2 rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                                  a.ai_confidence === "high"
+                                    ? "bg-green-100 text-green-700"
+                                    : a.ai_confidence === "medium"
+                                      ? "bg-amber-100 text-amber-800"
+                                      : "bg-red-100 text-red-700"
+                                }`}
+                              >
+                                {a.ai_confidence} confidence
+                              </span>
+                            )}
+                          </p>
+                          <p className="mt-1 text-foreground">
+                            {a.ai_reasoning}
+                          </p>
+                        </div>
                       )}
                     </>
                   ) : (

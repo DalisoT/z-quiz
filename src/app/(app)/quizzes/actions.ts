@@ -51,6 +51,13 @@ export async function submitQuiz(formData: FormData): Promise<void> {
     .eq("id", quizId)
     .single();
 
+  const cookieStore = await cookies();
+  const cookieHeader = cookieStore
+    .getAll()
+    .map((c) => `${c.name}=${c.value}`)
+    .join("; ");
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+
   if (!quiz) throw new Error("Quiz not found");
 
   const ordered = (quiz.quiz_questions ?? [])
@@ -82,6 +89,7 @@ export async function submitQuiz(formData: FormData): Promise<void> {
     question_id: string;
     selected_option_id: string | null;
     text_answer: string | null;
+    image_storage_path: string | null;
     is_correct: boolean | null;
     marks_awarded: number;
     marked_by: "auto" | "ai" | "human";
@@ -95,6 +103,7 @@ export async function submitQuiz(formData: FormData): Promise<void> {
     const isMCQ = q.question_type === "mcq";
     const isShortAnswer =
       q.question_type === "short_answer" || q.question_type === "essay";
+    const isEquation = q.question_type === "equation";
 
     if (isMCQ) {
       // --- Auto-mark MCQ ---
@@ -112,6 +121,7 @@ export async function submitQuiz(formData: FormData): Promise<void> {
         question_id: q.id,
         selected_option_id: pickedOptionId,
         text_answer: null,
+        image_storage_path: null,
         is_correct: isCorrect,
         marks_awarded: marksAwarded,
         marked_by: "auto",
@@ -203,6 +213,114 @@ export async function submitQuiz(formData: FormData): Promise<void> {
         question_id: q.id,
         selected_option_id: null,
         text_answer: text,
+        image_storage_path: null,
+        is_correct: aiIsCorrect,
+        marks_awarded: aiMarks,
+        marked_by: "ai",
+        ai_reasoning: aiReasoning,
+        ai_confidence: aiConfidence,
+      });
+    } else if (isEquation) {
+      // --- Vision mark equation (handwritten photo) ---
+      const text = String(formData.get(`text_${q.id}`) ?? "");
+      const fileEntry = formData.get(`image_${q.id}`);
+      const expected = q.question_answers?.[0]?.expected_answer ?? "";
+      const markingNotes = q.question_answers?.[0]?.marking_notes ?? undefined;
+
+      const file =
+        fileEntry instanceof File && fileEntry.size > 0 ? fileEntry : null;
+
+      let aiMarks = 0;
+      let aiIsCorrect: boolean | null = false;
+      let aiReasoning: string | null = null;
+      let aiConfidence: "high" | "medium" | "low" | null = null;
+      let imageStoragePath: string | null = null;
+
+      if (!file) {
+        aiReasoning = "No photo was uploaded for this question.";
+        aiConfidence = "high";
+      } else if (expected.length === 0) {
+        aiReasoning = "No expected answer configured for this question.";
+        aiConfidence = "low";
+        // Still upload the image so the user can see what they submitted
+        imageStoragePath = await uploadAttemptImage(supabase, user.id, q.id, file);
+      } else {
+        // 1. Upload to Supabase Storage
+        imageStoragePath = await uploadAttemptImage(
+          supabase,
+          user.id,
+          q.id,
+          file,
+        );
+
+        if (!imageStoragePath) {
+          aiReasoning = "Failed to upload your photo. Please try again.";
+          aiConfidence = "low";
+        } else {
+          // 2. Get a signed URL (valid for 10 min) for the vision API
+          const { data: signed } = await supabase.storage
+            .from("attempt-images")
+            .createSignedUrl(imageStoragePath, 600);
+
+          if (!signed?.signedUrl) {
+            aiReasoning = "Failed to generate a signed URL for your photo.";
+            aiConfidence = "low";
+          } else {
+            // 3. Call the vision API
+            try {
+              const res = await fetch(
+                `${appUrl}/api/grade/equation`,
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Cookie: cookieHeader,
+                  },
+                  body: JSON.stringify({
+                    question: q.prompt,
+                    expectedAnswer: expected,
+                    studentAnswer: text,
+                    imageUrl: signed.signedUrl,
+                    maxMarks: q.marks,
+                    markingNotes,
+                  }),
+                  signal: AbortSignal.timeout(45_000),
+                  cache: "no-store",
+                },
+              );
+
+              if (res.ok) {
+                const data = (await res.json()) as {
+                  marks: number;
+                  reasoning?: string;
+                  confidence?: "high" | "medium" | "low";
+                };
+                aiMarks = Number(data.marks) || 0;
+                aiReasoning = data.reasoning ?? null;
+                aiConfidence = data.confidence ?? null;
+                aiIsCorrect = aiMarks / q.marks >= 0.5;
+              } else {
+                console.error(
+                  "[submitQuiz] Vision route returned",
+                  res.status,
+                );
+                aiReasoning = `Vision marking unavailable (HTTP ${res.status}). Your photo was saved but not graded.`;
+              }
+            } catch (err) {
+              console.error("[submitQuiz] Vision call failed:", err);
+              aiReasoning =
+                "Vision marking failed. Your photo was saved but not graded.";
+            }
+          }
+        }
+      }
+
+      marksObtained += aiMarks;
+      answers.push({
+        question_id: q.id,
+        selected_option_id: null,
+        text_answer: text,
+        image_storage_path: imageStoragePath,
         is_correct: aiIsCorrect,
         marks_awarded: aiMarks,
         marked_by: "ai",
@@ -215,6 +333,7 @@ export async function submitQuiz(formData: FormData): Promise<void> {
         question_id: q.id,
         selected_option_id: null,
         text_answer: null,
+        image_storage_path: null,
         is_correct: null,
         marks_awarded: 0,
         marked_by: "auto",
@@ -249,6 +368,7 @@ export async function submitQuiz(formData: FormData): Promise<void> {
       question_id: a.question_id,
       selected_option_id: a.selected_option_id,
       text_answer: a.text_answer,
+      image_storage_path: a.image_storage_path,
       is_correct: a.is_correct,
       marks_awarded: a.marks_awarded,
       marked_by: a.marked_by,
@@ -295,4 +415,38 @@ export async function submitQuiz(formData: FormData): Promise<void> {
 
   revalidatePath("/dashboard");
   redirect(`/results/${attempt.id}`);
+}
+
+/**
+ * Upload a student-submitted photo to the attempt-images bucket.
+ * Path: {user_id}/{question_id}-{timestamp}.{ext}
+ * Returns the storage path on success, null on failure.
+ */
+async function uploadAttemptImage(
+  supabase: Awaited<ReturnType<typeof import("@/lib/supabase/server").createClient>>,
+  userId: string,
+  questionId: string,
+  file: File,
+): Promise<string | null> {
+  try {
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const safeExt = ext.length > 0 ? ext : "jpg";
+    const path = `${userId}/${questionId}-${Date.now()}.${safeExt}`;
+
+    const { error } = await supabase.storage
+      .from("attempt-images")
+      .upload(path, file, {
+        contentType: file.type || "image/jpeg",
+        upsert: false,
+      });
+
+    if (error) {
+      console.error("[uploadAttemptImage] upload error:", error.message);
+      return null;
+    }
+    return path;
+  } catch (err) {
+    console.error("[uploadAttemptImage] unexpected error:", err);
+    return null;
+  }
 }

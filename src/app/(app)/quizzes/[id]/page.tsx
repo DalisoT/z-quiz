@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { submitQuiz } from "../actions";
+import { EquationImageInput } from "@/components/quiz/equation-image-input";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -119,10 +120,18 @@ export default async function QuizPage({ params }: Props) {
             </span>
           )}
           {ordered.some(
-            (q: { question_type: string }) => q.question_type !== "mcq",
+            (q: { question_type: string }) => q.question_type === "equation",
+          ) && (
+            <span className="rounded-md bg-blue-100 px-2 py-1 font-medium text-blue-800">
+              Photo upload required
+            </span>
+          )}
+          {ordered.some(
+            (q: { question_type: string }) =>
+              q.question_type === "short_answer" || q.question_type === "essay",
           ) && (
             <span className="rounded-md bg-amber-100 px-2 py-1 font-medium text-amber-800">
-              AI-marked questions included
+              AI-marked text questions
             </span>
           )}
         </div>
@@ -150,6 +159,7 @@ export default async function QuizPage({ params }: Props) {
             idx: number,
           ) => {
             const isMCQ = q.question_type === "mcq";
+            const isEquation = q.question_type === "equation";
             return (
               <fieldset
                 key={q.id}
@@ -157,7 +167,12 @@ export default async function QuizPage({ params }: Props) {
               >
                 <legend className="px-1 text-sm font-semibold text-muted-foreground">
                   Question {idx + 1} · {q.marks} mark{q.marks === 1 ? "" : "s"}
-                  {!isMCQ && (
+                  {isEquation && (
+                    <span className="ml-2 rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-800">
+                      VISION-MARKED · PHOTO REQUIRED
+                    </span>
+                  )}
+                  {!isMCQ && !isEquation && (
                     <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800">
                       AI-MARKED
                     </span>
@@ -189,6 +204,25 @@ export default async function QuizPage({ params }: Props) {
                           </span>
                         </label>
                       ))}
+                  </div>
+                ) : isEquation ? (
+                  <div>
+                    <EquationImageInput name={`image_${q.id}`} required />
+                    <div className="mt-4">
+                      <label
+                        htmlFor={`text_${q.id}`}
+                        className="block text-sm font-medium text-foreground"
+                      >
+                        Or type your final answer here (optional)
+                      </label>
+                      <textarea
+                        id={`text_${q.id}`}
+                        name={`text_${q.id}`}
+                        rows={2}
+                        className="mt-1 block w-full rounded-lg border border-border bg-white px-3 py-2.5 text-sm shadow-sm placeholder:text-muted-foreground focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+                        placeholder="e.g. x = 4"
+                      />
+                    </div>
                   </div>
                 ) : (
                   <div className="mt-4">
