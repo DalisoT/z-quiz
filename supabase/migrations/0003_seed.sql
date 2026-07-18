@@ -31,6 +31,31 @@ declare
   q_id uuid;
   quiz_id uuid;
 begin
+  -- --------------------------------------------------------------------------
+  -- CLEANUP: remove any partial seed data so this script is fully idempotent.
+  -- Only touches the specific seed rows; real user data (accounts, attempts)
+  -- is untouched because we filter on exact titles / prompts.
+  -- --------------------------------------------------------------------------
+  delete from public.quizzes
+  where title in ('Algebra — Quick Practice', 'Grammar — Quick Practice');
+
+  delete from public.questions
+  where prompt in (
+    'Solve for x:  2x + 5 = 13',
+    'If f(x) = 2x² − 3x + 1, find f(2).',
+    'Simplify (x² − 9) / (x − 3).',
+    'Find the roots of x² − 5x + 6 = 0.',
+    'Find dy/dx if y = 3x² + 2x.',
+    'Evaluate ∫ 2x dx.',
+    'Find dy/dx if y = sin(x).',
+    'Choose the correct sentence.',
+    'Identify the verb in: "The cat quickly ran across the yard."',
+    'Which sentence is in the passive voice?',
+    'The word "ubiquitous" most nearly means:',
+    'What is the main purpose of reading a comprehension passage?'
+  );
+
+  --------------------------------------------------------------------------
   select id into g12_id from public.grades where code = 'G12';
 
   -- Mathematics
@@ -77,14 +102,12 @@ begin
   insert into public.questions
     (topic_id, question_type, prompt, explanation, marks, difficulty, source_examiner, source_paper, source_year)
   values
-    ('Solve for x:  2x + 5 = 13', 'Subtract 5 from both sides, then divide by 2.', 1, 'easy', 'ECZ', 'Paper 1', 2022),
-    ('If f(x) = 2x² − 3x + 1, find f(2).', 'f(2) = 2(4) − 3(2) + 1 = 8 − 6 + 1 = 3', 1, 'easy', 'ECZ', 'Paper 1', 2021),
-    ('Simplify (x² − 9) / (x − 3).', 'Factor the numerator: (x−3)(x+3). Cancel (x−3).', 1, 'medium', 'ECZ', 'Paper 1', 2020),
-    ('Find the roots of x² − 5x + 6 = 0.', 'Factor: (x−2)(x−3) = 0, so x = 2 or x = 3.', 1, 'medium', 'ECZ', 'Paper 1', 2019)
+    (topic_id, 'mcq', 'Solve for x:  2x + 5 = 13',                      'Subtract 5 from both sides, then divide by 2.', 1, 'easy',   'ECZ', 'Paper 1', 2022),
+    (topic_id, 'mcq', 'If f(x) = 2x² − 3x + 1, find f(2).',             'f(2) = 2(4) − 3(2) + 1 = 8 − 6 + 1 = 3',         1, 'easy',   'ECZ', 'Paper 1', 2021),
+    (topic_id, 'mcq', 'Simplify (x² − 9) / (x − 3).',                    'Factor the numerator: (x−3)(x+3). Cancel (x−3).', 1, 'medium', 'ECZ', 'Paper 1', 2020),
+    (topic_id, 'mcq', 'Find the roots of x² − 5x + 6 = 0.',             'Factor: (x−2)(x−3) = 0, so x = 2 or x = 3.',   1, 'medium', 'ECZ', 'Paper 1', 2019)
   on conflict do nothing;
 
-  -- Add options for each Algebra question (use the prompt as a poor-man's dedup,
-  -- but since prompts are not unique we re-fetch by prompt + topic to be safe).
   for q_id in
     select id from public.questions
     where topic_id = (select id from public.topics where subject_id = maths_id and slug = 'algebra')
@@ -95,7 +118,6 @@ begin
         'Find the roots of x² − 5x + 6 = 0.'
       )
   loop
-    -- Idempotency: skip if options already exist for this question
     if not exists (select 1 from public.question_options where question_id = q_id) then
       if q_id in (select id from public.questions where prompt = 'Solve for x:  2x + 5 = 13') then
         insert into public.question_options (question_id, label, text, is_correct, display_order) values
@@ -133,9 +155,9 @@ begin
   insert into public.questions
     (topic_id, question_type, prompt, explanation, marks, difficulty, source_examiner, source_paper, source_year)
   values
-    ('Find dy/dx if y = 3x² + 2x.', 'Power rule: d/dx(axⁿ) = n·a·xⁿ⁻¹', 1, 'easy', 'ECZ', 'Paper 2', 2022),
-    ('Evaluate ∫ 2x dx.', 'Antiderivative of 2x is x² + C.', 1, 'easy', 'ECZ', 'Paper 2', 2021),
-    ('Find dy/dx if y = sin(x).', 'd/dx(sin x) = cos x.', 1, 'medium', 'ECZ', 'Paper 2', 2020)
+    (topic_id, 'mcq', 'Find dy/dx if y = 3x² + 2x.', 'Power rule: d/dx(axⁿ) = n·a·xⁿ⁻¹', 1, 'easy',   'ECZ', 'Paper 2', 2022),
+    (topic_id, 'mcq', 'Evaluate ∫ 2x dx.',            'Antiderivative of 2x is x² + C.',   1, 'easy',   'ECZ', 'Paper 2', 2021),
+    (topic_id, 'mcq', 'Find dy/dx if y = sin(x).',   'd/dx(sin x) = cos x.',             1, 'medium', 'ECZ', 'Paper 2', 2020)
   on conflict do nothing;
 
   for q_id in
@@ -178,9 +200,9 @@ begin
   insert into public.questions
     (topic_id, question_type, prompt, explanation, marks, difficulty, source_examiner, source_paper, source_year)
   values
-    ('Choose the correct sentence.', '"She doesn''t know" is the correct third-person singular form.', 1, 'easy', 'ECZ', 'Paper 1', 2022),
-    ('Identify the verb in: "The cat quickly ran across the yard."', '"Ran" is the action word (past tense of "run").', 1, 'easy', 'ECZ', 'Paper 1', 2021),
-    ('Which sentence is in the passive voice?', 'Passive voice: subject receives the action ("was written").', 1, 'medium', 'ECZ', 'Paper 1', 2020)
+    (topic_id, 'mcq', 'Choose the correct sentence.',                                            '"She doesn''t know" is the correct third-person singular form.', 1, 'easy',   'ECZ', 'Paper 1', 2022),
+    (topic_id, 'mcq', 'Identify the verb in: "The cat quickly ran across the yard."',           '"Ran" is the action word (past tense of "run").',               1, 'easy',   'ECZ', 'Paper 1', 2021),
+    (topic_id, 'mcq', 'Which sentence is in the passive voice?',                                 'Passive voice: subject receives the action ("was written").',  1, 'medium', 'ECZ', 'Paper 1', 2020)
   on conflict do nothing;
 
   for q_id in
@@ -207,10 +229,10 @@ begin
           (q_id, 'D', 'yard',    false, 4);
       elsif q_id in (select id from public.questions where prompt = 'Which sentence is in the passive voice?') then
         insert into public.question_options (question_id, label, text, is_correct, display_order) values
-          (q_id, 'A', 'The teacher praised the students.',  false, 1),
-          (q_id, 'B', 'The students praised the teacher.',  false, 2),
-          (q_id, 'C', 'The students were praised by the teacher.', true, 3),
-          (q_id, 'D', 'The teacher is praising the students.', false, 4);
+          (q_id, 'A', 'The teacher praised the students.',                false, 1),
+          (q_id, 'B', 'The students praised the teacher.',                false, 2),
+          (q_id, 'C', 'The students were praised by the teacher.',        true,  3),
+          (q_id, 'D', 'The teacher is praising the students.',            false, 4);
       end if;
     end if;
   end loop;
@@ -223,8 +245,8 @@ begin
   insert into public.questions
     (topic_id, question_type, prompt, explanation, marks, difficulty, source_examiner, source_paper, source_year)
   values
-    ('The word "ubiquitous" most nearly means:', 'Ubiquitous = present everywhere.', 1, 'medium', 'ECZ', 'Paper 2', 2022),
-    ('What is the main purpose of reading a comprehension passage?', 'To test understanding of a given text.', 1, 'easy', 'ECZ', 'Paper 2', 2021)
+    (topic_id, 'mcq', 'The word "ubiquitous" most nearly means:',                  'Ubiquitous = present everywhere.',         1, 'medium', 'ECZ', 'Paper 2', 2022),
+    (topic_id, 'mcq', 'What is the main purpose of reading a comprehension passage?', 'To test understanding of a given text.', 1, 'easy',   'ECZ', 'Paper 2', 2021)
   on conflict do nothing;
 
   for q_id in
@@ -258,12 +280,16 @@ begin
 
   -- Quiz 1: G12 Mathematics — Algebra Practice
   select id into topic_id from public.topics where subject_id = maths_id and slug = 'algebra';
-  insert into public.quizzes (topic_id, title, description, time_limit_minutes, is_published)
-  values (topic_id, 'Algebra — Quick Practice', '4 questions on basic G12 algebra.', 10, true)
-  on conflict do nothing
-  returning id into quiz_id;
 
-  if quiz_id is not null then
+  if not exists (
+    select 1 from public.quizzes
+    where topic_id = (select id from public.topics where subject_id = maths_id and slug = 'algebra')
+      and title = 'Algebra — Quick Practice'
+  ) then
+    insert into public.quizzes (topic_id, title, description, time_limit_minutes, is_published)
+    values (topic_id, 'Algebra — Quick Practice', '4 questions on basic G12 algebra.', 10, true)
+    returning id into quiz_id;
+
     insert into public.quiz_questions (quiz_id, question_id, display_order)
     select quiz_id, q.id, row_number() over (order by q.created_at)
     from public.questions q
@@ -273,11 +299,12 @@ begin
 
   -- Quiz 2: G12 English — Grammar Practice
   select id into topic_id from public.topics where subject_id = eng_id and slug = 'grammar';
-  select id into quiz_id from public.quizzes
-    where topic_id = (select id from public.topics where subject_id = eng_id and slug = 'grammar')
-      and title = 'Grammar — Quick Practice';
 
-  if quiz_id is null then
+  if not exists (
+    select 1 from public.quizzes
+    where topic_id = (select id from public.topics where subject_id = eng_id and slug = 'grammar')
+      and title = 'Grammar — Quick Practice'
+  ) then
     insert into public.quizzes (topic_id, title, description, time_limit_minutes, is_published)
     values (topic_id, 'Grammar — Quick Practice', '3 questions on basic G12 English grammar.', 10, true)
     returning id into quiz_id;
